@@ -1,0 +1,317 @@
+-- ======================================================
+-- 校园自助点餐系统 · 数据库建表脚本（修改完善版）
+-- 版本：2.1
+-- 日期：2026-05-11
+-- 设计：第11组 mumu
+-- 说明：
+--   1. 基于需求文档与分工文档，完全符合原始设计
+--   2. 统一 utf8mb4 字符集，支持 emoji
+--   3. 保留 merchant_apply 表，实现入驻申请独立生命周期
+--   4. 订单状态增加“已支付”，完整支持支付流程
+--   5. 核心表支持软删除（is_deleted）
+--   6. 修复 order 关键字（表名 orders）
+--   7. 优化复合索引，提升查询效率
+-- ======================================================
+
+CREATE DATABASE IF NOT EXISTS campus_dining
+DEFAULT CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE campus_dining;
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ======================================================
+-- 1. 学生用户表
+-- ======================================================
+DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+    `username` VARCHAR(50) NOT NULL COMMENT '登录账号',
+    `password` VARCHAR(100) NOT NULL COMMENT '登录密码（BCrypt加密）',
+    `real_name` VARCHAR(30) NOT NULL COMMENT '真实姓名',
+    `phone` CHAR(11) NOT NULL COMMENT '手机号',
+    `avatar` VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用 1正常',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '软删除：0正常 1删除',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_username` (`username`),
+    UNIQUE KEY `uk_phone` (`phone`),
+    KEY `idx_status` (`status`),
+    KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学生用户表';
+
+-- ======================================================
+-- 2. 商家表（仅存储审核通过的商家账号）
+-- ======================================================
+DROP TABLE IF EXISTS `merchant`;
+CREATE TABLE `merchant` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '商家ID',
+    `username` VARCHAR(50) NOT NULL COMMENT '登录账号',
+    `password` VARCHAR(100) NOT NULL COMMENT '登录密码（BCrypt加密）',
+    `shop_name` VARCHAR(50) NOT NULL COMMENT '店铺名称',
+    `category` VARCHAR(20) NOT NULL COMMENT '经营分类',
+    `contact_person` VARCHAR(30) NOT NULL COMMENT '联系人',
+    `phone` CHAR(11) NOT NULL COMMENT '联系电话',
+    `address` VARCHAR(100) NOT NULL COMMENT '店铺地址',
+    `logo` VARCHAR(255) DEFAULT NULL COMMENT '店铺Logo',
+    `description` VARCHAR(500) DEFAULT NULL COMMENT '店铺简介',
+    `business_license` VARCHAR(255) DEFAULT NULL COMMENT '营业执照',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '营业状态：1正常营业 2暂停营业 3禁止营业',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '软删除',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_username` (`username`),
+    UNIQUE KEY `uk_shop_name` (`shop_name`),
+    KEY `idx_status` (`status`),
+    KEY `idx_category` (`category`),
+    KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商家表';
+
+-- ======================================================
+-- 3. 商家入驻申请表（独立记录每次申请）
+-- ======================================================
+DROP TABLE IF EXISTS `merchant_apply`;
+CREATE TABLE `merchant_apply` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '申请ID',
+    `merchant_id` BIGINT DEFAULT NULL COMMENT '商家ID（审核通过后关联merchant.id）',
+    `shop_name` VARCHAR(50) NOT NULL COMMENT '申请店铺名称',
+    `category` VARCHAR(20) NOT NULL COMMENT '经营分类',
+    `contact_person` VARCHAR(30) NOT NULL COMMENT '联系人',
+    `phone` CHAR(11) NOT NULL COMMENT '联系电话',
+    `address` VARCHAR(100) NOT NULL COMMENT '店铺地址',
+    `business_license` VARCHAR(255) NOT NULL COMMENT '营业执照图片URL',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '审核状态：0待审核 1已通过 2已驳回 3退回补充',
+    `reviewer_id` BIGINT DEFAULT NULL COMMENT '审核人ID（关联admin.id）',
+    `review_comment` VARCHAR(200) DEFAULT NULL COMMENT '审核意见/驳回原因',
+    `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请提交时间',
+    `reviewed_at` DATETIME DEFAULT NULL COMMENT '审核完成时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_merchant_id` (`merchant_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_applied_at` (`applied_at`),
+    CONSTRAINT `fk_apply_merchant` FOREIGN KEY (`merchant_id`) REFERENCES `merchant` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商家入驻申请表';
+
+-- ======================================================
+-- 4. 管理员表
+-- ======================================================
+DROP TABLE IF EXISTS `admin`;
+CREATE TABLE `admin` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '管理员ID',
+    `username` VARCHAR(50) NOT NULL COMMENT '登录账号',
+    `password` VARCHAR(100) NOT NULL COMMENT '登录密码（BCrypt加密）',
+    `role` VARCHAR(20) NOT NULL DEFAULT '普通管理员' COMMENT '角色：超级管理员 / 普通管理员',
+    `real_name` VARCHAR(30) DEFAULT NULL COMMENT '真实姓名',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用 1正常',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '软删除',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_username` (`username`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员表';
+
+-- ======================================================
+-- 5. 菜品表
+-- ======================================================
+DROP TABLE IF EXISTS `dish`;
+CREATE TABLE `dish` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '菜品ID',
+    `merchant_id` BIGINT NOT NULL COMMENT '所属商家ID',
+    `name` VARCHAR(30) NOT NULL COMMENT '菜品名称',
+    `category` VARCHAR(20) NOT NULL COMMENT '菜品分类',
+    `price` DECIMAL(10,2) NOT NULL COMMENT '价格（元）',
+    `description` VARCHAR(200) DEFAULT NULL COMMENT '菜品描述',
+    `image_url` VARCHAR(255) DEFAULT NULL COMMENT '菜品图片URL',
+    `stock_status` TINYINT NOT NULL DEFAULT 1 COMMENT '库存状态：0无库存 1有库存',
+    `shelf_status` TINYINT NOT NULL DEFAULT 1 COMMENT '上架状态：0下架 1上架',
+    `monthly_sales` INT NOT NULL DEFAULT 0 COMMENT '月销量',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '软删除',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_merchant_id` (`merchant_id`),
+    KEY `idx_category` (`category`),
+    KEY `idx_shelf_status` (`shelf_status`),
+    KEY `idx_is_deleted` (`is_deleted`),
+    CONSTRAINT `fk_dish_merchant` FOREIGN KEY (`merchant_id`) REFERENCES `merchant` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜品表';
+
+-- ======================================================
+-- 6. 购物车表
+-- ======================================================
+DROP TABLE IF EXISTS `cart_item`;
+CREATE TABLE `cart_item` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '购物车ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `dish_id` BIGINT NOT NULL COMMENT '菜品ID',
+    `quantity` INT NOT NULL DEFAULT 1 COMMENT '数量（1-999）',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_dish` (`user_id`, `dish_id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_dish_id` (`dish_id`),
+    CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_cart_dish` FOREIGN KEY (`dish_id`) REFERENCES `dish` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='购物车表';
+
+-- ======================================================
+-- 7. 订单主表（完整状态流：待支付→已支付→待接单→制作中→待取餐→已完成/已取消）
+-- ======================================================
+DROP TABLE IF EXISTS `orders`;
+CREATE TABLE `orders` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '订单ID',
+    `order_no` VARCHAR(32) NOT NULL COMMENT '订单编号（12位数字，建议Redis生成）',
+    `user_id` BIGINT NOT NULL COMMENT '下单用户ID',
+    `merchant_id` BIGINT NOT NULL COMMENT '商家ID',
+    `total_amount` DECIMAL(10,2) NOT NULL COMMENT '商品总金额（优惠前）',
+    `discount_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '优惠总金额',
+    `actual_amount` DECIMAL(10,2) NOT NULL COMMENT '实付金额',
+    `pay_method` VARCHAR(20) DEFAULT NULL COMMENT '支付方式：微信/支付宝/校园卡',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '
+        0 待支付
+        1 已支付
+        2 待接单
+        3 制作中
+        4 待取餐
+        5 已完成
+        6 已取消
+    ',
+    `cancel_reason` VARCHAR(100) DEFAULT NULL COMMENT '取消原因',
+    `paid_at` DATETIME DEFAULT NULL COMMENT '支付时间',
+    `finished_at` DATETIME DEFAULT NULL COMMENT '完成时间（已取餐或取消时间）',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '软删除',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_order_no` (`order_no`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_merchant_id` (`merchant_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_created_at` (`created_at`),
+    KEY `idx_user_created` (`user_id`, `created_at`),
+    KEY `idx_merchant_created` (`merchant_id`, `created_at`),
+    CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `fk_orders_merchant` FOREIGN KEY (`merchant_id`) REFERENCES `merchant` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单主表';
+
+-- ======================================================
+-- 8. 订单明细表
+-- ======================================================
+DROP TABLE IF EXISTS `order_item`;
+CREATE TABLE `order_item` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '明细ID',
+    `order_id` BIGINT NOT NULL COMMENT '订单ID',
+    `dish_id` BIGINT NOT NULL COMMENT '菜品ID',
+    `dish_name` VARCHAR(30) NOT NULL COMMENT '下单时菜品名称（快照）',
+    `dish_price` DECIMAL(10,2) NOT NULL COMMENT '下单时单价（快照）',
+    `quantity` INT NOT NULL COMMENT '购买数量',
+    `subtotal` DECIMAL(10,2) NOT NULL COMMENT '小计金额',
+    PRIMARY KEY (`id`),
+    KEY `idx_order_id` (`order_id`),
+    KEY `idx_dish_id` (`dish_id`),
+    CONSTRAINT `fk_order_item_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单明细表';
+
+-- ======================================================
+-- 9. 聊天消息表（支持学生、商家、客服三方）
+-- ======================================================
+DROP TABLE IF EXISTS `message`;
+CREATE TABLE `message` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '消息ID',
+    `order_id` BIGINT DEFAULT NULL COMMENT '关联订单ID（可为空）',
+    `sender_type` VARCHAR(10) NOT NULL COMMENT '发送方类型：user / merchant / admin',
+    `sender_id` BIGINT NOT NULL COMMENT '发送方ID（逻辑外键）',
+    `receiver_type` VARCHAR(10) NOT NULL COMMENT '接收方类型：user / merchant / admin',
+    `receiver_id` BIGINT NOT NULL COMMENT '接收方ID（逻辑外键）',
+    `content` VARCHAR(500) NOT NULL COMMENT '消息内容',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '消息状态：0发送中 1已发送 2已读 3失败',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '软删除',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_order_id` (`order_id`),
+    KEY `idx_sender` (`sender_type`, `sender_id`),
+    KEY `idx_receiver` (`receiver_type`, `receiver_id`),
+    CONSTRAINT `fk_message_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天消息表';
+
+-- ======================================================
+-- 10. 系统参数表
+-- ======================================================
+DROP TABLE IF EXISTS `system_param`;
+CREATE TABLE `system_param` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '参数ID',
+    `param_key` VARCHAR(50) NOT NULL COMMENT '参数键',
+    `param_value` VARCHAR(200) NOT NULL COMMENT '参数值',
+    `description` VARCHAR(200) DEFAULT NULL COMMENT '参数说明',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_param_key` (`param_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统参数表';
+
+-- ======================================================
+-- 11. 商家黑名单表（商家拉黑频繁退单学生）
+-- ======================================================
+DROP TABLE IF EXISTS `merchant_blacklist`;
+CREATE TABLE `merchant_blacklist` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '黑名单ID',
+    `merchant_id` BIGINT NOT NULL COMMENT '商家ID',
+    `user_id` BIGINT NOT NULL COMMENT '学生ID',
+    `reason` VARCHAR(100) DEFAULT NULL COMMENT '拉黑原因',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '拉黑时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_merchant_user` (`merchant_id`, `user_id`),
+    CONSTRAINT `fk_blacklist_merchant` FOREIGN KEY (`merchant_id`) REFERENCES `merchant` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_blacklist_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商家黑名单表';
+
+-- ======================================================
+-- 12. 操作日志表（满足安全审计要求）
+-- ======================================================
+DROP TABLE IF EXISTS `operation_log`;
+CREATE TABLE `operation_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+    `operator_type` VARCHAR(20) NOT NULL COMMENT '操作者类型：admin / merchant',
+    `operator_id` BIGINT NOT NULL COMMENT '操作者ID',
+    `operation` VARCHAR(50) NOT NULL COMMENT '操作类型（如导出订单、修改价格、状态变更）',
+    `target_type` VARCHAR(50) DEFAULT NULL COMMENT '目标类型',
+    `target_id` BIGINT DEFAULT NULL COMMENT '目标ID',
+    `detail` VARCHAR(500) DEFAULT NULL COMMENT '操作详情',
+    `ip_address` VARCHAR(45) DEFAULT NULL COMMENT '操作IP',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_operator` (`operator_type`, `operator_id`),
+    KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- ======================================================
+-- 初始化数据
+-- ======================================================
+
+-- 默认超级管理员（密码：admin123，BCrypt加密示例，实际可用相同加密值）
+INSERT INTO `admin` (`username`, `password`, `role`, `real_name`) VALUES
+('superadmin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5E', '超级管理员', '系统管理员');
+
+-- 默认系统参数
+INSERT INTO `system_param` (`param_key`, `param_value`, `description`) VALUES
+('order.auto_cancel_minutes', '30', '待支付/待接单订单自动取消时间（分钟）'),
+('order.max_quantity_per_dish', '99', '单个菜品最大购买份数'),
+('merchant.apply_retry_days', '7', '商家入驻申请被驳回后可重新申请间隔天数');
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ======================================================
+-- 全部表创建完成
+-- 使用建议：
+-- 1. 开发环境可直接执行
+-- 2. 生产环境注意备份原有数据
+-- 3. 密码字段需使用 BCrypt 加密，不可明文存储
+-- 4. 订单编号 order_no 建议采用 Redis 自增或数据库序列表生成
+-- ======================================================
