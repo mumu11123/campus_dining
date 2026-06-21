@@ -80,6 +80,8 @@ const router = createRouter({
 
 // 路由守卫（权限控制）
 router.beforeEach((to, from, next) => {
+  document.title = to.path.startsWith('/admin') ? '管理员端 - 校园点餐' : '商家端 - 校园点餐'
+
   const merchantToken = localStorage.getItem('merchantToken')
   const adminToken = localStorage.getItem('adminToken')
 

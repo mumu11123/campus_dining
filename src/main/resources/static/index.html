@@ -4,7 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>merchant-front</title>
+    <title>校园点餐后台</title>
+    <script>
+      ;(() => {
+        const setTitle = () => {
+          document.title = location.pathname.startsWith('/admin')
+            ? '管理员端 - 校园点餐'
+            : '商家端 - 校园点餐'
+        }
+        const rawPushState = history.pushState
+        const rawReplaceState = history.replaceState
+        history.pushState = function (...args) {
+          const result = rawPushState.apply(this, args)
+          setTitle()
+          return result
+        }
+        history.replaceState = function (...args) {
+          const result = rawReplaceState.apply(this, args)
+          setTitle()
+          return result
+        }
+        window.addEventListener('popstate', setTitle)
+        setTitle()
+      })()
+    </script>
     <script type="module" crossorigin src="/assets/index-q-MLMuSm.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Dz35cMjQ.css">
   </head>
