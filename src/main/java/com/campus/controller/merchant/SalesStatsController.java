@@ -1,5 +1,7 @@
 package com.campus.controller.merchant;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.dto.merchant.DateRangeDTO;
 import com.campus.dto.merchant.DishRankDTO;
@@ -26,6 +28,7 @@ import java.util.Map;
 @RequestMapping("/api/merchant/stats")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerAuth")
+@RequireRole(UserRole.MERCHANT)
 public class SalesStatsController {
 
     private final SalesStatsService salesStatsService;

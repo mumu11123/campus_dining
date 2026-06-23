@@ -1,5 +1,7 @@
 package com.campus.controller.admin;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.exception.BusinessException;
 import com.campus.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +21,7 @@ import java.util.Map;
 @Tag(name = "管理员端-系统维护")
 @RestController
 @RequestMapping("/api/admin/system")
+@RequireRole(UserRole.ADMIN)
 public class AdminSystemController {
 
     private static final Map<String, SystemParamVO> PARAMS = new LinkedHashMap<>();

@@ -1,5 +1,7 @@
 package com.campus.controller.auth;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.entity.Admin;
 import com.campus.mapper.AdminMapper;
@@ -51,6 +53,7 @@ public class AdminAuthController {
 
     @Operation(summary = "获取管理员信息")
     @GetMapping("/admin/info")
+    @RequireRole(UserRole.ADMIN)
     public Result<AdminVO> info(HttpServletRequest request) {
         Long adminId = Long.parseLong(request.getAttribute("userId").toString());
         Admin admin = adminMapper.selectById(adminId);

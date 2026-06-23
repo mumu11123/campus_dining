@@ -1,5 +1,7 @@
 package com.campus.controller.merchant;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.dto.merchant.ReplyMessageDTO;
 import com.campus.entity.Message;
@@ -20,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/merchant/message")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerAuth")
+@RequireRole(UserRole.MERCHANT)
 public class MerchantMessageController {
 
     private final MessageService messageService;

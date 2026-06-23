@@ -1,5 +1,7 @@
 package com.campus.controller.student;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.entity.Merchant;
 import com.campus.entity.User;
@@ -25,6 +27,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/student")
 @RequiredArgsConstructor
+@RequireRole(UserRole.STUDENT)
 public class StudentMerchantController {
 
     private final MerchantService merchantService;

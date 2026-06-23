@@ -1,5 +1,7 @@
 package com.campus.controller.merchant;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.dto.merchant.ApplyMerchantDTO;
 import com.campus.dto.merchant.StatusMerchantDTO;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerAuth")
 @Tag(name = "商家模块 - 店铺管理")
+@RequireRole(UserRole.MERCHANT)
 public class MerchantManageController {
 
     private final MerchantService merchantService;

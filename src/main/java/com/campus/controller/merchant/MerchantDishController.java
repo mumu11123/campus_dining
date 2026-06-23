@@ -1,5 +1,7 @@
 package com.campus.controller.merchant;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.dto.merchant.AddDishDTO;
 import com.campus.dto.merchant.UpdateDishDTO;
@@ -22,6 +24,7 @@ import java.util.List;
 @RequestMapping("/api/merchant/dishes")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerAuth")
+@RequireRole(UserRole.MERCHANT)
 public class MerchantDishController {
 
     private final DishService dishService;

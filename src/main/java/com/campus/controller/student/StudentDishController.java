@@ -1,6 +1,8 @@
 package com.campus.controller.student;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.entity.Dish;
 import com.campus.entity.Merchant;
@@ -23,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/student")
 @RequiredArgsConstructor
+@RequireRole(UserRole.STUDENT)
 public class StudentDishController {
 
     private final DishService dishService;

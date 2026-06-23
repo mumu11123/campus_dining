@@ -1,5 +1,7 @@
 package com.campus.controller.student;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.entity.Message;
 import com.campus.entity.Orders;
@@ -21,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/student/messages")
 @RequiredArgsConstructor
+@RequireRole(UserRole.STUDENT)
 public class StudentMessageController {
 
     private final MessageService messageService;

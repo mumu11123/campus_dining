@@ -1,5 +1,7 @@
 package com.campus.controller.student;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.dto.student.CartAddDTO;
 import com.campus.dto.student.CartUpdateDTO;
@@ -35,6 +37,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/student/cart")
 @RequiredArgsConstructor
+@RequireRole(UserRole.STUDENT)
 public class StudentCartController {
 
     private final CartItemService cartItemService;
