@@ -1,5 +1,7 @@
 package com.campus.controller.merchant;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.entity.Orders;
 import com.campus.service.MerchantService;
@@ -17,6 +19,7 @@ import java.util.List;
 @RequestMapping("/api/merchant/orders")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerAuth")
+@RequireRole(UserRole.MERCHANT)
 public class MerchantOrderController {
 
     private final OrderService orderService;

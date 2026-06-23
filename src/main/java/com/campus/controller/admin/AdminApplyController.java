@@ -1,6 +1,8 @@
 package com.campus.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.entity.Merchant;
 import com.campus.entity.MerchantApply;
@@ -29,6 +31,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@RequireRole(UserRole.ADMIN)
 public class AdminApplyController {
 
     private final MerchantApplyService merchantApplyService;

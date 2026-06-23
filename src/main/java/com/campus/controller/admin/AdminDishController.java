@@ -1,6 +1,8 @@
 package com.campus.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.exception.BusinessException;
 import com.campus.common.result.Result;
 import com.campus.entity.Dish;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin/dishes")
 @RequiredArgsConstructor
+@RequireRole(UserRole.ADMIN)
 public class AdminDishController {
 
     private final DishMapper dishMapper;

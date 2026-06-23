@@ -1,5 +1,7 @@
 package com.campus.controller.student;
 
+import com.campus.common.auth.RequireRole;
+import com.campus.common.auth.UserRole;
 import com.campus.common.result.Result;
 import com.campus.dto.student.SubmitOrderDTO;
 import com.campus.entity.Dish;
@@ -35,6 +37,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/student")
 @RequiredArgsConstructor
+@RequireRole(UserRole.STUDENT)
 public class StudentOrderController {
 
     private final OrderService orderService;

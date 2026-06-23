@@ -10,9 +10,9 @@ spring:
   # ---------- 数据源 ----------
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/campus_dining?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 532303
+    url: ${DB_URL:jdbc:mysql://localhost:3306/campus_dining?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
 
   # ---------- Jackson 时间格式 ----------
   jackson:
@@ -53,10 +53,10 @@ logging:
 
 # ==================== JWT 配置 ====================
 jwt:
-  # 密钥（生产环境请使用复杂密钥并通过环境变量注入）
-  secret: campus-dining-jwt-secret-key-2024-must-be-at-least-256-bits-long
+  # 至少 32 字节，必须通过环境变量注入
+  secret: ${JWT_SECRET}
   # Token 过期时间（单位：毫秒），默认 7 天
-  expiration: 604800000
+  expiration: ${JWT_EXPIRATION:604800000}
 
 # ==================== Knife4j 文档配置 ====================
 knife4j:
